@@ -45,7 +45,7 @@ func (c *Client) GetContainerStats(ctx context.Context, container *Container) er
 		return err
 	}
 	defer res.Body.Close()
-	if _, err = io.Copy(c.statsResWriter, res.Body); err != nil {
+	if _, err := io.Copy(c.statsResWriter, res.Body); err != nil {
 		return err
 	}
 	return nil

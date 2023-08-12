@@ -63,17 +63,17 @@ func Attachable() SetCreateNetworkOptions {
 
 // Ingress sets whether the Docker network is an ingress network.
 // Use this function to indicate if the network is the ingress network used for routing externally.
-func Ingress(ingress bool) SetCreateNetworkOptions {
+func Ingress() SetCreateNetworkOptions {
 	return func(options *types.NetworkCreate) {
-		options.Ingress = ingress
+		options.Ingress = true
 	}
 }
 
 // ConfigOnly sets whether the Docker network is a config-only network.
 // Use this function to indicate if the network is only used for storing service configuration details.
-func ConfigOnly(configOnly bool) SetCreateNetworkOptions {
+func ConfigOnly() SetCreateNetworkOptions {
 	return func(options *types.NetworkCreate) {
-		options.ConfigOnly = configOnly
+		options.ConfigOnly = true
 	}
 }
 

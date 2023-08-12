@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -124,7 +123,7 @@ Adds a command to the container configuration.
 func CMD(cmd ...string) SetOptionsFns {
 	return func(Config *container.Config) {
 		if Config.Cmd == nil {
-			Config.Cmd = make(strslice.StrSlice, 0)
+			Config.Cmd = []string{}
 		}
 		Config.Cmd = append(Config.Cmd, cmd...)
 	}
