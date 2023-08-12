@@ -101,14 +101,15 @@ func DomainName(name string) SetOptionsFns {
 /*
 Adds a image to the container configuration.
 
+	image := client.NewImage("alpine")
 	container := client.NewContainer("my_container")
 	container.SetOptions(
-		containeropt.Image("alpine"),
+		containeropt.Image(image),
 	)
 */
-func Image(image string) SetOptionsFns {
+func Image(image fmt.Stringer) SetOptionsFns {
 	return func(Config *container.Config) {
-		Config.Image = image
+		Config.Image = image.String()
 	}
 }
 

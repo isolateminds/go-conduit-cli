@@ -57,6 +57,7 @@ const (
 	SYS_CHROOT Capability = "SYS_CHROOT"
 
 	// NOT GRANTED BY DEFAULT
+
 	// Configure auditing and audit rules
 	AUDIT_CONTROL Capability = "AUDIT_CONTROL"
 
