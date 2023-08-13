@@ -12,17 +12,17 @@ import (
 )
 
 type Client struct {
-	client         *client.Client
+	wrapped        *client.Client
 	imageResWriter io.Writer
 	statsResWriter io.Writer
 }
 
 func (c *Client) String() string {
-	return c.client.DaemonHost()
+	return c.wrapped.DaemonHost()
 }
 
 func (c *Client) CreateNetwork(ctx context.Context, network *Network) error {
-	res, err := c.client.NetworkCreate(ctx, network.Name, *network.options)
+	res, err := c.wrapped.NetworkCreate(ctx, network.Name, *network.options)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (c *Client) CreateNetwork(ctx context.Context, network *Network) error {
 }
 
 func (c *Client) CreateVolume(ctx context.Context, volume *Volume) error {
-	_, err := c.client.VolumeCreate(ctx, *volume.options)
+	_, err := c.wrapped.VolumeCreate(ctx, *volume.options)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (c *Client) CreateVolume(ctx context.Context, volume *Volume) error {
 
 func (c *Client) GetContainerStats(ctx context.Context, container *Container) error {
 
-	res, err := c.client.ContainerStats(ctx, container.Name, true)
+	res, err := c.wrapped.ContainerStats(ctx, container.Name, true)
 	if err != nil {
 		return err
 	}
@@ -51,30 +51,30 @@ func (c *Client) GetContainerStats(ctx context.Context, container *Container) er
 	return nil
 }
 func (c *Client) RemoveContainer(ctx context.Context, container *Container, force bool) error {
-	return c.client.ContainerRemove(ctx, container.Name, types.ContainerRemoveOptions{
+	return c.wrapped.ContainerRemove(ctx, container.Name, types.ContainerRemoveOptions{
 		RemoveLinks:   force,
 		RemoveVolumes: force,
 		Force:         force,
 	})
 }
 func (c *Client) UnpauseContainer(ctx context.Context, container *Container) error {
-	return c.client.ContainerUnpause(ctx, container.Name)
+	return c.wrapped.ContainerUnpause(ctx, container.Name)
 }
 func (c *Client) PauseContainer(ctx context.Context, container *Container) error {
-	return c.client.ContainerPause(ctx, container.Name)
+	return c.wrapped.ContainerPause(ctx, container.Name)
 }
 func (c *Client) RestartContainer(ctx context.Context, container *Container) error {
-	return c.client.ContainerRestart(ctx, container.Name, StopOptions{})
+	return c.wrapped.ContainerRestart(ctx, container.Name, StopOptions{})
 }
 
 func (c *Client) StopContainer(ctx context.Context, container *Container) error {
-	return c.client.ContainerStop(ctx, container.Name, StopOptions{})
+	return c.wrapped.ContainerStop(ctx, container.Name, StopOptions{})
 }
 func (c *Client) StartContainer(ctx context.Context, container *Container) error {
-	return c.client.ContainerStart(ctx, container.Name, types.ContainerStartOptions{})
+	return c.wrapped.ContainerStart(ctx, container.Name, types.ContainerStartOptions{})
 }
 func (c *Client) CreateContainer(ctx context.Context, container *Container) error {
-	res, err := c.client.ContainerCreate(
+	res, err := c.wrapped.ContainerCreate(
 		ctx,
 		container.options,
 		container.hostOptions,
@@ -95,7 +95,7 @@ func (c *Client) BuildImage(ctx context.Context, image *Image) error {
 	if image.buildOptions.Context == nil {
 		return errors.New("BuildImageError: no context was supplied use image.NewImageFromSrc(dir) or supply the context manually.")
 	}
-	res, err := c.client.ImageBuild(ctx, image.buildOptions.Context, *image.buildOptions)
+	res, err := c.wrapped.ImageBuild(ctx, image.buildOptions.Context, *image.buildOptions)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (c *Client) BuildImage(ctx context.Context, image *Image) error {
 	return nil
 }
 func (c *Client) PullImage(ctx context.Context, image *Image) error {
-	rc, err := c.client.ImagePull(ctx, image.ref, *image.pullOptions)
+	rc, err := c.wrapped.ImagePull(ctx, image.ref, *image.pullOptions)
 	if err != nil {
 		return err
 	}
@@ -129,24 +129,24 @@ func (c *Client) SetStatsResponeWriter(dst io.Writer) {
 	c.statsResWriter = dst
 }
 
-func NewClient(ctx context.Context) (*Client, error) {
+func NewClient(ctx context.Context) (c *Client, err error) {
 	client, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithAPIVersionNegotiation(),
 	)
 	if err != nil {
-		return nil, err
+		return
 	}
 	ok, err := isDaemonRunning(ctx, client)
 	if ok {
-		return &Client{
-			client:         client,
-			imageResWriter: os.Stdout,
-			statsResWriter: os.Stdout,
-		}, nil
-	} else {
-		return nil, err
+		return &Client{client, os.Stdout, os.Stdout}, nil
 	}
+	return
+}
+
+// Unwraps the abstracted client for use with other docker packages
+func (c *Client) Unwrap() client.APIClient {
+	return c.wrapped
 }
 
 // checks if the docker daemon is running by pinging it
