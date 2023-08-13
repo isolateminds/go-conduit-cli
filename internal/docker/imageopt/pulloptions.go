@@ -2,6 +2,7 @@ package imageopt
 
 import (
 	"encoding/base64"
+	"runtime"
 
 	"github.com/docker/docker/api/types"
 )
@@ -39,6 +40,13 @@ Short hand equivalent:
 func Platform(platform string) SetPullOptFn {
 	return func(options *types.ImagePullOptions) {
 		options.Platform = platform
+	}
+}
+
+// Matches the platform to the runtime's arch
+func MatchPlatform() SetPullOptFn {
+	return func(options *types.ImagePullOptions) {
+		options.Platform = runtime.GOARCH
 	}
 }
 
