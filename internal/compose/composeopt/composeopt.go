@@ -1,7 +1,10 @@
 package composeopt
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/types"
@@ -44,7 +47,7 @@ func YamlFetchUrl(url string) SetComposerOptions {
 }
 
 /*
-	 Provide a custom log consumer that implements:
+Provide a custom log consumer that implements:
 
 		type LogConsumer interface {
 	    	Log(containerName, message string)
@@ -57,6 +60,23 @@ func CustomLogConsumer(consumer api.LogConsumer) SetComposerOptions {
 
 	return func(opt *types.ComposerOptions) error {
 		opt.LogConsumer = consumer
+		return nil
+	}
+}
+
+// The default docker compose logger when --detach flag is not zeroed
+func DefaultComposeLogConsumer(ctx context.Context) SetComposerOptions {
+	return func(opt *types.ComposerOptions) error {
+		opt.LogConsumer = &logConsumer{
+			ctx:        ctx,
+			presenters: sync.Map{},
+			width:      0,
+			stdout:     os.Stdout,
+			stderr:     os.Stderr,
+			color:      true,
+			prefix:     true,
+			timestamp:  false,
+		}
 		return nil
 	}
 }

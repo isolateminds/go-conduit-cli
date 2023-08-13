@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,7 +27,6 @@ import (
 
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/isolateminds/go-conduit-cli/internal/compose/types"
 )
 
 // LogConsumer consume logs from services and format them
@@ -41,23 +39,6 @@ type logConsumer struct {
 	color      bool
 	prefix     bool
 	timestamp  bool
-}
-
-// NewLogConsumer creates a new LogConsumer
-func DefaultComposeLogConsumer(ctx context.Context) SetComposerOptions {
-	return func(opt *types.ComposerOptions) error {
-		opt.LogConsumer = &logConsumer{
-			ctx:        ctx,
-			presenters: sync.Map{},
-			width:      0,
-			stdout:     os.Stdout,
-			stderr:     os.Stderr,
-			color:      true,
-			prefix:     true,
-			timestamp:  false,
-		}
-		return nil
-	}
 }
 
 func (l *logConsumer) Register(name string) {
@@ -167,15 +148,6 @@ const (
 	// Auto detect terminal is a tty and can use ANSI codes
 	Auto = "auto"
 )
-
-// SetANSIMode configure formatter for colored output on ANSI-compliant console
-func SetANSIMode(streams api.Streams, ansi string) {
-	if !useAnsi(streams, ansi) {
-		nextColor = func() colorFunc {
-			return monochrome
-		}
-	}
-}
 
 func useAnsi(streams api.Streams, ansi string) bool {
 	switch ansi {
