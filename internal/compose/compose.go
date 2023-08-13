@@ -56,7 +56,7 @@ func (c *Composer) Config(ctx context.Context) ([]byte, error) {
 	})
 }
 
-func NewComposer(projectName string, dc *docker.Client, environment *Environment, yaml *Yaml) (*Composer, error) {
+func NewComposer(projectName string, dc *docker.Client, environment *Environment, yaml *Yaml, profiles ...string) (*Composer, error) {
 	ctx := context.Background()
 	configFile := types.ConfigFile{
 		Content: yaml.Bytes,
@@ -73,10 +73,9 @@ func NewComposer(projectName string, dc *docker.Client, environment *Environment
 		fmt.Println(err)
 		return nil, err
 	}
+	project.ApplyProfiles(profiles)
 
 	client := dc.Unwrap()
-	project.ApplyProfiles([]string{"mongodb"})
-
 	for i, s := range project.Services {
 		s.CustomLabels = map[string]string{
 			api.ProjectLabel:     project.Name,
