@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -135,7 +136,7 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 		client.WithAPIVersionNegotiation(),
 	)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("NewClientError: %s", err)
 	}
 	ok, err := isDaemonRunning(ctx, client)
 	if ok {
@@ -152,7 +153,7 @@ func (c *Client) Unwrap() client.APIClient {
 // checks if the docker daemon is running by pinging it
 func isDaemonRunning(ctx context.Context, client *client.Client) (bool, error) {
 	if _, err := client.Ping(ctx); err != nil {
-		return false, err
+		return false, fmt.Errorf("IsDaemonRunningError: %s", err)
 	}
 	return true, nil
 }
