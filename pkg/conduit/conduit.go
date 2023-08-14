@@ -14,7 +14,7 @@ const (
 	//Hard coded for now I guess
 
 	mongoENVTemplateURL    = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/env-mongo-temlate.env"
-	postgresENVTemplateURL = "https://github.com/isolateminds/go-conduit-cli/blob/main/content/env-postgres-template.env"
+	postgresENVTemplateURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/env-postgres-template.env"
 
 	yamlURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/docker-compose.yml"
 )
