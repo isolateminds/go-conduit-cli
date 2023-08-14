@@ -25,6 +25,14 @@ type Composer struct {
 	Options     *types.ComposerOptions
 }
 
+func (c *Composer) AllServicesNames() []string {
+	result := []string{}
+	for _, v := range c.project.AllServices() {
+		result = append(result, v.Name)
+	}
+	return result
+}
+
 // Filters the underlying yaml profiles with the provided ones
 // and returns the ones that only exist within the yaml
 func (c *Composer) FilterYamlProfiles(profiles []string) []string {
@@ -37,7 +45,27 @@ func (c *Composer) FilterYamlProfiles(profiles []string) []string {
 	}
 	return filtered
 }
+func (c *Composer) Stop(ctx context.Context, services []string) error {
+	definedServices := c.AllServicesNames()
+	notDefined := []string{}
+	for _, service := range services {
+		if !slices.Contains(definedServices, service) {
+			notDefined = append(notDefined, service)
+		}
+	}
+	if len(notDefined) > 0 {
+		return fmt.Errorf("ComposerStopError: %v are not defined services", notDefined)
+	}
+	err := c.service.Stop(ctx, c.project.Name, api.StopOptions{
+		Project:  c.project,
+		Services: services,
+	})
+	if err != nil {
+		return fmt.Errorf("ComposerStopError: %s", err)
+	}
+	return nil
 
+}
 func (c *Composer) Up(ctx context.Context) error {
 	err := c.service.Up(ctx, c.project, api.UpOptions{
 		Create: api.CreateOptions{

@@ -33,6 +33,25 @@ func Client(client *docker.Client) SetComposerOptions {
 		return nil
 	}
 }
+func YamlFromFile(src string) SetComposerOptions {
+	return func(opt *types.ComposerOptions) (err error) {
+		opt.Yaml, err = types.LoadYamlFromFile(src)
+		if err != nil {
+			return fmt.Errorf("YamlFromFile: %s", err)
+		}
+		return nil
+	}
+}
+
+func EnvFromFile(src string) SetComposerOptions {
+	return func(opt *types.ComposerOptions) (err error) {
+		opt.Environment, err = types.LoadEnvFromFile(src)
+		if err != nil {
+			return fmt.Errorf("EnvFromFile: %s", err)
+		}
+		return nil
+	}
+}
 func EnvFetchUrl(url string) SetComposerOptions {
 	return func(opt *types.ComposerOptions) (err error) {
 		opt.Environment, err = types.LoadEnvFromURL(url)

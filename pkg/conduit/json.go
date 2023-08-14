@@ -18,8 +18,7 @@ type ConduitJson struct {
 	Profiles    []string `json:"profiles"`
 }
 
-func WriteConduitJSON(projectName, version, database string, profiles []string) error {
-	cj := &ConduitJson{projectName, version, database, profiles}
+func (cj *ConduitJson) WriteFile() error {
 	b, err := json.Marshal(cj)
 	if err != nil {
 		return fmt.Errorf("WriteConduitJSONError: %s", err)
