@@ -55,6 +55,7 @@ func (c *Composer) Remove(ctx context.Context, services []string) error {
 		Services: services,
 		Project:  c.project,
 		Stop:     true,
+		Volumes:  true,
 	})
 	if err != nil {
 		return fmt.Errorf("ComposerRemoveError: %s", err)
