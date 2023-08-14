@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/isolateminds/go-conduit-cli/pkg/conduit"
@@ -43,6 +44,35 @@ var (
 				log.Fatal(err)
 			}
 		},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if len(services) > 0 {
+				services = slices.Filter(nil, services, func(s string) bool {
+					return strings.TrimSpace(s) != ""
+				})
+			}
+		},
+	}
+
+	rm = &cobra.Command{
+		Use:   "rm",
+		Short: "Remove your local Conduit deployment",
+		Long:  "Remove your local Conduit deployment",
+		Run: func(cmd *cobra.Command, args []string) {
+			if !IsInProjectDirectory() {
+				if err := ChangeToProjectRootDir(); err != nil {
+					FatalError("RemoveError", err)
+				}
+			}
+			ctx := context.Background()
+			con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
+			if err != nil {
+				FatalError("RemoveError", err)
+			}
+			err = con.Composer.Remove(ctx, services)
+			if err != nil {
+				FatalError("RemoveError", err)
+			}
+		},
 	}
 	stop = &cobra.Command{
 		Use:   "stop",
@@ -53,11 +83,6 @@ var (
 				if err := ChangeToProjectRootDir(); err != nil {
 					FatalError("StartError", err)
 				}
-			}
-			if len(services) > 0 {
-				services = slices.Filter(nil, services, func(s string) bool {
-					return strings.TrimSpace(s) != ""
-				})
 			}
 			ctx := context.Background()
 			con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
@@ -124,7 +149,8 @@ var (
 			deletePDir := func() error {
 				return os.RemoveAll(pDir)
 			}
-			HandleSIGTERM(context.Background(), func() {
+			sigCtx, cancelSigKill := context.WithCancel(context.Background())
+			HandleSIGTERM(sigCtx, func() {
 				err := deletePDir()
 				if err != nil {
 					FatalError("SetupError", err)
@@ -158,11 +184,21 @@ var (
 			if err != nil {
 				FatalError("SetupError", err, deletePDir)
 			}
-			err = con.Up(ctx)
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
+			cancelSigKill()
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if con.Up(ctx) != nil {
+					FatalError("SetupError", err)
+				}
+			}()
+
+			wg.Wait()
+			if detach {
+				Success("project created")
 			}
-			Success("project created")
 			os.Exit(0)
 		},
 	}
@@ -179,7 +215,8 @@ func init() {
 	start.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
 	deploy.AddCommand(stop)
 	stop.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to stop")
-
+	deploy.AddCommand(rm)
+	rm.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to remove")
 }
 
 // Invokes a callback after signal termination CTRL+C
