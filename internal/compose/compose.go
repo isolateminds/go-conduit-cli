@@ -15,13 +15,27 @@ import (
 	"github.com/docker/compose/v2/pkg/compose"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/composeopt"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/types"
+	"golang.org/x/exp/slices"
 )
 
 type Composer struct {
 	project     *ctypes.Project
 	service     api.Service
 	logConsumer api.LogConsumer
-	options     *types.ComposerOptions
+	Options     *types.ComposerOptions
+}
+
+// Filters the underlying yaml profiles with the provided ones
+// and returns the ones that only exist within the yaml
+func (c *Composer) FilterYamlProfiles(profiles []string) []string {
+	yamlProfiles := c.project.AllServices().GetProfiles()
+	filtered := []string{}
+	for _, profile := range profiles {
+		if slices.Contains(yamlProfiles, profile) {
+			filtered = append(filtered, profile)
+		}
+	}
+	return filtered
 }
 
 func (c *Composer) Up(ctx context.Context) error {
@@ -112,7 +126,7 @@ func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOption
 		return &Composer{
 			project:     project,
 			service:     service,
-			options:     options,
+			Options:     options,
 			logConsumer: options.LogConsumer,
 		}, nil
 	}
