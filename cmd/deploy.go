@@ -33,12 +33,9 @@ var (
 	projectName string
 	detach      bool
 	deploy      = &cobra.Command{
-		Use:                   "deploy",
-		DisableFlagParsing:    true,
-		DisableFlagsInUseLine: true,
-		DisableSuggestions:    true,
-		Short:                 "Manage a local Conduit deployment",
-		Long:                  "Manage a local Conduit deployment",
+		Use:   "deploy",
+		Short: "Manage a local Conduit deployment",
+		Long:  "Manage a local Conduit deployment",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
 				log.Fatal(err)
