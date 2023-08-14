@@ -16,7 +16,7 @@ const (
 	mongoENVTemplateURL    = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/env-mongo-temlate.env"
 	postgresENVTemplateURL = "https://github.com/isolateminds/go-conduit-cli/blob/main/content/env-postgres-template.env"
 
-	yamlURL = "https://raw.githubusercontent.com/ConduitPlatform/Conduit/main/docker/docker-compose.yml"
+	yamlURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/docker-compose.yml"
 )
 
 type Conduit struct {
