@@ -149,6 +149,15 @@ const (
 	Auto = "auto"
 )
 
+// SetANSIMode configure formatter for colored output on ANSI-compliant console
+func SetANSIMode(streams api.Streams, ansi string) {
+	if !useAnsi(streams, ansi) {
+		nextColor = func() colorFunc {
+			return monochrome
+		}
+	}
+}
+
 func useAnsi(streams api.Streams, ansi string) bool {
 	switch ansi {
 	case Always:
@@ -191,4 +200,24 @@ func rainbowColor() colorFunc {
 	result := rainbow[currentIndex]
 	currentIndex = (currentIndex + 1) % len(rainbow)
 	return result
+}
+
+func init() {
+	colors := map[string]colorFunc{}
+	for i, name := range names {
+		colors[name] = makeColorFunc(strconv.Itoa(30 + i))
+		colors["intense_"+name] = makeColorFunc(strconv.Itoa(30+i) + ";1")
+	}
+	rainbow = []colorFunc{
+		colors["cyan"],
+		colors["yellow"],
+		colors["green"],
+		colors["magenta"],
+		colors["blue"],
+		colors["intense_cyan"],
+		colors["intense_yellow"],
+		colors["intense_green"],
+		colors["intense_magenta"],
+		colors["intense_blue"],
+	}
 }

@@ -2,16 +2,23 @@ package composeopt
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sync"
 
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/types"
 	"github.com/isolateminds/go-conduit-cli/internal/docker"
+	"github.com/joho/godotenv"
 )
 
 type SetComposerOptions func(opt *types.ComposerOptions) error
+type TemplateFormatter interface {
+	Format(in []byte) (out io.Reader, err error)
+}
 
 func Profiles(profiles ...string) SetComposerOptions {
 	return func(opt *types.ComposerOptions) error {
@@ -26,12 +33,45 @@ func Client(client *docker.Client) SetComposerOptions {
 		return nil
 	}
 }
-
 func EnvFetchUrl(url string) SetComposerOptions {
 	return func(opt *types.ComposerOptions) (err error) {
 		opt.Environment, err = types.LoadEnvFromURL(url)
 		if err != nil {
 			return fmt.Errorf("EnvFetchError: %s", err)
+		}
+		return nil
+	}
+}
+func Error(message string) SetComposerOptions {
+	return func(opt *types.ComposerOptions) error {
+		return errors.New(message)
+	}
+}
+func TemplateEnvFetchUrl(url string, formatter TemplateFormatter) SetComposerOptions {
+	return func(opt *types.ComposerOptions) (err error) {
+		if formatter == nil {
+			return fmt.Errorf("TemplateEnvFetchError: Formatter must not be %v", formatter)
+		}
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("TemplateEnvFetchError: %s", err)
+		}
+		defer res.Body.Close()
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("TemplateEnvFetchError: %s", err)
+		}
+		formatted, err := formatter.Format(data)
+		if err != nil {
+			return fmt.Errorf("TemplateEnvFetchError: %s", err)
+		}
+		parsed, err := godotenv.Parse(formatted)
+		if err != nil {
+			return fmt.Errorf("TemplateEnvFetchError: %s", err)
+		}
+		opt.Environment = types.NewEnvironment(parsed)
+		if err != nil {
+			return fmt.Errorf("TemplateEnvFetchError: %s", err)
 		}
 		return nil
 	}
