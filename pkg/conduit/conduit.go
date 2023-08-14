@@ -89,6 +89,6 @@ func applyDatabaseEnvFromProfile(ctx context.Context, profiles []string) compose
 		})
 		return composeopt.TemplateEnvFetchUrl(postgresENVTemplateURL, formatter)
 	default:
-		return composeopt.Error("DatabaseEnvFromProfileError: a database profile has not been selected")
+		return composeopt.Error("DatabaseEnvFromProfileError: a database profile has not been given")
 	}
 }
