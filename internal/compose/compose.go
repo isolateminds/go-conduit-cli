@@ -45,18 +45,28 @@ func (c *Composer) FilterYamlProfiles(profiles []string) []string {
 	}
 	return filtered
 }
+
+func (c *Composer) Remove(ctx context.Context, services []string) error {
+	err := c.checkServices(services)
+	if err != nil {
+		return fmt.Errorf("ComposerRemoveError: %s", err)
+	}
+	err = c.service.Remove(ctx, c.project.Name, api.RemoveOptions{
+		Services: services,
+		Project:  c.project,
+		Stop:     true,
+	})
+	if err != nil {
+		return fmt.Errorf("ComposerRemoveError: %s", err)
+	}
+	return nil
+}
 func (c *Composer) Stop(ctx context.Context, services []string) error {
-	definedServices := c.AllServicesNames()
-	notDefined := []string{}
-	for _, service := range services {
-		if !slices.Contains(definedServices, service) {
-			notDefined = append(notDefined, service)
-		}
+	err := c.checkServices(services)
+	if err != nil {
+		return fmt.Errorf("ComposerStopError: %s", err)
 	}
-	if len(notDefined) > 0 {
-		return fmt.Errorf("ComposerStopError: %v are not defined services", notDefined)
-	}
-	err := c.service.Stop(ctx, c.project.Name, api.StopOptions{
+	err = c.service.Stop(ctx, c.project.Name, api.StopOptions{
 		Project:  c.project,
 		Services: services,
 	})
@@ -158,4 +168,17 @@ func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOption
 			logConsumer: options.LogConsumer,
 		}, nil
 	}
+}
+func (c *Composer) checkServices(services []string) error {
+	definedServices := c.AllServicesNames()
+	notDefined := []string{}
+	for _, service := range services {
+		if !slices.Contains(definedServices, service) {
+			notDefined = append(notDefined, service)
+		}
+	}
+	if len(notDefined) > 0 {
+		return fmt.Errorf("ComposerStopError: %v are not defined services", notDefined)
+	}
+	return nil
 }
