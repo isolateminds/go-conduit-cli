@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 
 	"github.com/isolateminds/go-conduit-cli/pkg/conduit"
@@ -183,16 +182,9 @@ var (
 			}
 			cancelSigKill()
 
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				if con.Up(ctx) != nil {
-					FatalError("SetupError", err)
-				}
-			}()
-
-			wg.Wait()
+			if err := con.Up(ctx); err != nil {
+				FatalError("SetupError", err)
+			}
 			if detach {
 				Success("project created")
 			}
