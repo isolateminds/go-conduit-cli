@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io/fs"
 	"io/ioutil"
+	"os"
 
 	"github.com/isolateminds/go-conduit-cli/internal/compose"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/composeopt"
 	"github.com/isolateminds/go-conduit-cli/internal/docker"
 	"github.com/isolateminds/go-conduit-cli/internal/utils"
+	"github.com/isolateminds/go-conduit-cli/pkg/conduit/errordefs"
 )
 
 const (
@@ -23,16 +25,19 @@ const (
 )
 
 type Conduit struct {
-	Composer *compose.Composer
-	Json     *ConduitJson
+	composer *compose.Composer
+	json     *ConduitJson
 }
 
+func (c *Conduit) Remove(ctx context.Context, services []string) error {
+	return c.composer.Remove(ctx, services)
+}
 func (c *Conduit) Stop(ctx context.Context, services []string) error {
-	return c.Composer.Stop(ctx, services)
+	return c.composer.Stop(ctx, services)
 }
 
 func (c *Conduit) Up(ctx context.Context) error {
-	return c.Composer.Up(ctx)
+	return c.composer.Up(ctx)
 }
 
 // For already bootstrapped projects must be in project root dir when you call this
@@ -40,23 +45,24 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 	//Automatically checks if connected to daemon
 	client, err := docker.NewClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitFromProject: %s", err)
+		return nil, errordefs.NewNewConduitFromProjectError(err)
 	}
 	//Load persisted data
 	data := &ConduitJson{}
 	b, err := ioutil.ReadFile("conduit.json")
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitFromProject: %s", err)
+		return nil, errordefs.NewNewConduitFromProjectError(err)
 	}
 	err = json.Unmarshal(b, data)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitFromProject: %s", err)
+		return nil, errordefs.NewNewConduitFromProjectError(err)
 	}
 
-	//block databases from being added
+	//block databases from being added because they where added already during bootstrapping
+	//block the profiles specified inside conduit.json
 	blockList := append(data.Profiles, "postgres", "mongodb")
 	//new profiles are ones who haven't been added before and any databases
-	newProfiles := BlockProfiles(profiles, blockList...)
+	newProfiles := blockProfiles(profiles, blockList...)
 	//the updated profiles are a mix of new and saved profiles (conduit.json)
 	updatedProfiles := append(data.Profiles, newProfiles...)
 
@@ -65,16 +71,17 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 		composeopt.Client(client),
 		composeopt.EnvFromFile(".env"),
 		composeopt.YamlFromFile("docker-compose.yaml"),
-		applyDetachedFlag(ctx, detached),
+		withDetachedFlag(ctx, detached),
+		//the profiles added here will be used with dcoker compose
 		composeopt.Profiles(updatedProfiles...),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitFromProject: %s", err)
+		return nil, errordefs.NewNewConduitFromProjectError(err)
 	}
 
 	return &Conduit{
-		Composer: composer,
-		Json: &ConduitJson{
+		composer: composer,
+		json: &ConduitJson{
 			ProjectName: data.ProjectName,
 			Version:     data.Version,
 			Database:    data.Database,
@@ -89,27 +96,27 @@ func NewConduitBootstrapper(ctx context.Context, name string, detached bool, pro
 	//Automatically checks if connected to daemon
 	client, err := docker.NewClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitBootstrapperError: %s", err)
+		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
 	db, err := getDatabaseName(profiles)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitBootstrapperError: %s", err)
+		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
 	composer, err := compose.NewComposer(
 		name,
 		composeopt.Client(client),
 		composeopt.YamlFetchUrl(yamlURL),
 		composeopt.Profiles(profiles...),
-		applyDetachedFlag(ctx, detached),
-		applyEnvFromDatabaseProfile(ctx, db),
+		withDetachedFlag(ctx, detached),
+		withEnvFromDatabaseProfile(ctx, db),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("NewConduitBootstrapperError: %s", err)
+		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
 
 	return &Conduit{
-		Composer: composer,
-		Json: &ConduitJson{
+		composer: composer,
+		json: &ConduitJson{
 			ProjectName: name,
 			Database:    db,
 			//filter the profiles here to save the actual profiles defined in the schema
@@ -118,8 +125,23 @@ func NewConduitBootstrapper(ctx context.Context, name string, detached bool, pro
 	}, nil
 }
 
+// Writes the docker-compose.yaml to current path
+func (c *Conduit) WriteComposeFile() error {
+	return os.WriteFile("docker-compose.yaml", c.composer.Options.Yaml.Bytes, fs.ModePerm)
+}
+
+// Writes the .env to current path
+func (c *Conduit) WriteEnvFile() error {
+	return os.WriteFile(".env", c.composer.Options.Environment.Bytes, fs.ModePerm)
+}
+
+// wWrites the json file to current path
+func (c *Conduit) WriteConduitJsonFile() error {
+	return c.json.WriteFile()
+}
+
 // If detatched no logging will be done same as --detach or -d flag in docker compose
-func applyDetachedFlag(ctx context.Context, detached bool) composeopt.SetComposerOptions {
+func withDetachedFlag(ctx context.Context, detached bool) composeopt.SetComposerOptions {
 	if detached {
 		return composeopt.CustomLogConsumer(nil)
 	}
@@ -127,7 +149,7 @@ func applyDetachedFlag(ctx context.Context, detached bool) composeopt.SetCompose
 }
 
 // Fetches either the mongodb .env  template or the postgres depending on profiles
-func applyEnvFromDatabaseProfile(ctx context.Context, db string) composeopt.SetComposerOptions {
+func withEnvFromDatabaseProfile(ctx context.Context, db string) composeopt.SetComposerOptions {
 
 	dbPass := utils.GenerateRandomString(32)
 	switch db {
@@ -144,11 +166,14 @@ func applyEnvFromDatabaseProfile(ctx context.Context, db string) composeopt.SetC
 		})
 		return composeopt.TemplateEnvFetchUrl(postgresENVTemplateURL, formatter)
 	default:
-		return composeopt.Error("DatabaseEnvFromProfileError: a database profile has not been given")
+		return composeopt.Error("a database profile has not been given use")
 	}
 }
 
-func BlockProfiles(profiles []string, blocked ...string) []string {
+// Helper function 'blocks' profiles from being included in the result.
+// It takes a list of profiles and a variable number of profiles to be blocked.
+// Blocked profiles are excluded from the result list.
+func blockProfiles(profiles []string, blocked ...string) []string {
 	blockedSet := make(map[string]struct{})
 	for _, b := range blocked {
 		blockedSet[b] = struct{}{}
@@ -177,7 +202,7 @@ func getDatabaseName(profiles []string) (string, error) {
 		}
 	}
 	if len(dbs) > 1 {
-		return "", errors.New("GetDatabaseNameError: cannot use multiple database profiles")
+		return "", errors.New("cannot use multiple database profiles")
 	}
 	return db, nil
 }
