@@ -27,6 +27,8 @@ var (
 	profiles    []string
 	services    []string
 	projectName string
+	imageTag    string
+	uiImageTag  string
 	detach      bool
 
 	deploy = &cobra.Command{
@@ -68,6 +70,8 @@ func init() {
 	//Deploy setup --profiles x,y,z --project-name my-proj --detach
 	setup.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
 	setup.PersistentFlags().StringVar(&projectName, "project-name", "conduit", "set the project name (defaults to conduit)")
+	setup.PersistentFlags().StringVar(&imageTag, "image-tag", "latest", "set the conduit ui image tag to use (defaults to latest)")
+	setup.PersistentFlags().StringVar(&uiImageTag, "ui-image-tag", "latest", "set the conduit ui image tag to use (defaults to latest)")
 	setup.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
 
 	//deploy start --profiles x,y,z --detach
@@ -184,9 +188,15 @@ func runSetup(cmd *cobra.Command, args []string) {
 		deletePDir()
 		PrintFatalError(NewSetupError(err))
 	}
-
+	options := &conduit.BootstrapperOptions{
+		ProjectName: projectName,
+		Detached:    detach,
+		Profiles:    profiles,
+		ImageTag:    imageTag,
+		UIImageTag:  uiImageTag,
+	}
 	ctx := context.Background()
-	con, err := conduit.NewConduitBootstrapper(ctx, projectName, detach, profiles)
+	con, err := conduit.NewConduitBootstrapper(ctx, options)
 	if err != nil {
 		deletePDir()
 		PrintFatalError(NewSetupError(err))
@@ -207,6 +217,7 @@ func runSetup(cmd *cobra.Command, args []string) {
 
 	cancelSigKill()
 	if err := con.Up(ctx); err != nil {
+		deletePDir()
 		PrintFatalError(NewSetupError(err))
 	}
 	//If detached print success message cause otherwise the client will be consuming docker compose logs
