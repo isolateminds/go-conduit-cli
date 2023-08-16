@@ -18,10 +18,10 @@ import (
 const (
 	//Hard coded for now I guess
 
-	mongoENVTemplateURL    = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/templates/mongo.env"
-	postgresENVTemplateURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/templates/postgres.env"
+	mongoEnvTemplateURL    = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/templates/mongo.env"
+	postgresEnvTemplateURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/templates/postgres.env"
 
-	yamlURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/content/docker-compose.yml"
+	dockerComposeTemplateURL = "https://raw.githubusercontent.com/isolateminds/go-conduit-cli/main/templates/docker-compose.yml"
 )
 
 type Conduit struct {
@@ -91,24 +91,32 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 	}, nil
 }
 
+type BootstrapperOptions struct {
+	ProjectName string
+	Profiles    []string
+	Detached    bool
+	ImageTag    string
+	UIImageTag  string
+}
+
 // For bootsrapping conduit projects and enabling profiles
-func NewConduitBootstrapper(ctx context.Context, name string, detached bool, profiles []string) (*Conduit, error) {
+func NewConduitBootstrapper(ctx context.Context, options *BootstrapperOptions) (*Conduit, error) {
 	//Automatically checks if connected to daemon
 	client, err := docker.NewClient(ctx)
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
-	db, err := getDatabaseName(profiles)
+	db, err := getDatabaseName(options.Profiles)
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
 	composer, err := compose.NewComposer(
-		name,
+		options.ProjectName,
 		composeopt.Client(client),
-		composeopt.YamlFetchUrl(yamlURL),
-		composeopt.Profiles(profiles...),
-		withDetachedFlag(ctx, detached),
-		withEnvFromDatabaseProfile(ctx, db),
+		composeopt.YamlFetchUrl(dockerComposeTemplateURL),
+		composeopt.Profiles(options.Profiles...),
+		withDetachedFlag(ctx, options.Detached),
+		withEnvBasedOnDatabaseProfile(ctx, db, options),
 	)
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
@@ -117,10 +125,10 @@ func NewConduitBootstrapper(ctx context.Context, name string, detached bool, pro
 	return &Conduit{
 		composer: composer,
 		json: &ConduitJson{
-			ProjectName: name,
+			ProjectName: options.ProjectName,
 			Database:    db,
 			//filter the profiles here to save the actual profiles defined in the schema
-			Profiles: composer.FilterYamlProfiles(profiles),
+			Profiles: composer.FilterYamlProfiles(options.Profiles),
 		},
 	}, nil
 }
@@ -148,23 +156,26 @@ func withDetachedFlag(ctx context.Context, detached bool) composeopt.SetComposer
 	return composeopt.DefaultComposeLogConsumer(ctx)
 }
 
-// Fetches either the mongodb .env  template or the postgres depending on profiles
-func withEnvFromDatabaseProfile(ctx context.Context, db string) composeopt.SetComposerOptions {
-
+/*
+Fetches either the mongodb .env  template or the postgres one depending on profiles
+and formats the env template
+*/
+func withEnvBasedOnDatabaseProfile(ctx context.Context, db string, options *BootstrapperOptions) composeopt.SetComposerOptions {
 	dbPass := utils.GenerateRandomString(32)
+	masterKey := utils.GenerateRandomString(64)
+	vMap := variableMap{
+		"MasterKey":   masterKey,
+		"ImageTag":    options.ImageTag,
+		"UIImageTag":  options.UIImageTag,
+		"ProjectName": options.ProjectName,
+	}
 	switch db {
 	case "mongodb":
-		formatter := newTemplateFormatter(variableMap{
-			"MasterKey":     utils.GenerateRandomString(64),
-			"MongoPassword": dbPass,
-		})
-		return composeopt.TemplateEnvFetchUrl(mongoENVTemplateURL, formatter)
+		vMap["MongoPassword"] = dbPass
+		return composeopt.TemplateEnvFetchUrl(mongoEnvTemplateURL, newTemplateFormatter(vMap))
 	case "postgres":
-		formatter := newTemplateFormatter(variableMap{
-			"MasterKey":        utils.GenerateRandomString(64),
-			"PostgresPassword": dbPass,
-		})
-		return composeopt.TemplateEnvFetchUrl(postgresENVTemplateURL, formatter)
+		vMap["PostgresPassword"] = dbPass
+		return composeopt.TemplateEnvFetchUrl(postgresEnvTemplateURL, newTemplateFormatter(vMap))
 	default:
 		return composeopt.Error("a database profile has not been given use")
 	}
@@ -188,6 +199,7 @@ func blockProfiles(profiles []string, blocked ...string) []string {
 	return result
 }
 
+// Gets the database name either mongodb or postgres if it finds to there will be an error
 func getDatabaseName(profiles []string) (string, error) {
 	var db string
 	var dbs []string
