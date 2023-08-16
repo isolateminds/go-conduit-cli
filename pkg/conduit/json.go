@@ -2,7 +2,6 @@ package conduit
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 )
@@ -18,14 +17,15 @@ type ConduitJson struct {
 	Profiles    []string `json:"profiles"`
 }
 
+// Writes the conduit.json file to current path
 func (cj *ConduitJson) WriteFile() error {
 	b, err := json.Marshal(cj)
 	if err != nil {
-		return fmt.Errorf("WriteConduitJSONError: %s", err)
+		return err
 	}
 	err = os.WriteFile("conduit.json", b, fs.ModePerm)
 	if err != nil {
-		return fmt.Errorf("WriteConduitJSONError: %s", err)
+		return err
 	}
 	return nil
 }
