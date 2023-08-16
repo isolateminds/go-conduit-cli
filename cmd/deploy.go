@@ -67,20 +67,20 @@ func init() {
 	deploy.AddCommand(rm)
 
 	//Flags
-	//Deploy setup --profiles x,y,z --project-name my-proj --detach
+	//Deploy setup
 	setup.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
 	setup.PersistentFlags().StringVar(&projectName, "project-name", "conduit", "set the project name")
 	setup.PersistentFlags().StringVar(&imageTag, "image-tag", "latest", "set the conduit ui image tag to use")
 	setup.PersistentFlags().StringVar(&uiImageTag, "ui-image-tag", "latest", "set the conduit ui image tag to use")
 	setup.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
 
-	//deploy start --profiles x,y,z --detach
+	//deploy start
 	start.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
 	start.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
-	//deploy stop --services my-db,my-frontend
+	//deploy stop
 	stop.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to stop")
 
-	//Deploy rm --services my-db,my-frontend
+	//deploy rm
 	rm.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to remove")
 }
 func runDeploy(cmd *cobra.Command, args []string) {
