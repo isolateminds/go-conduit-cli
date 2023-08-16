@@ -14,6 +14,7 @@ import (
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/compose/v2/pkg/compose"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/composeopt"
+	"github.com/isolateminds/go-conduit-cli/internal/compose/errordefs"
 	"github.com/isolateminds/go-conduit-cli/internal/compose/types"
 	"golang.org/x/exp/slices"
 )
@@ -34,7 +35,7 @@ func (c *Composer) AllServicesNames() []string {
 }
 
 // Filters the underlying yaml profiles with the provided ones
-// and returns the ones that only exist within the yaml
+// and returns the ones that only exist within the yaml - docker-compose.yaml
 func (c *Composer) FilterYamlProfiles(profiles []string) []string {
 	yamlProfiles := c.project.AllServices().GetProfiles()
 	filtered := []string{}
@@ -49,7 +50,7 @@ func (c *Composer) FilterYamlProfiles(profiles []string) []string {
 func (c *Composer) Remove(ctx context.Context, services []string) error {
 	err := c.checkServices(services)
 	if err != nil {
-		return fmt.Errorf("ComposerRemoveError: %s", err)
+		return errordefs.NewComposerRemoveError(err)
 	}
 	err = c.service.Remove(ctx, c.project.Name, api.RemoveOptions{
 		Services: services,
@@ -58,21 +59,21 @@ func (c *Composer) Remove(ctx context.Context, services []string) error {
 		Volumes:  true,
 	})
 	if err != nil {
-		return fmt.Errorf("ComposerRemoveError: %s", err)
+		return errordefs.NewComposerRemoveError(err)
 	}
 	return nil
 }
 func (c *Composer) Stop(ctx context.Context, services []string) error {
 	err := c.checkServices(services)
 	if err != nil {
-		return fmt.Errorf("ComposerStopError: %s", err)
+		return errordefs.NewComposerStopError(err)
 	}
 	err = c.service.Stop(ctx, c.project.Name, api.StopOptions{
 		Project:  c.project,
 		Services: services,
 	})
 	if err != nil {
-		return fmt.Errorf("ComposerStopError: %s", err)
+		return errordefs.NewComposerStopError(err)
 	}
 	return nil
 
@@ -93,7 +94,7 @@ func (c *Composer) Up(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("ComposerUpError: %s", err)
+		return errordefs.NewComposerUpError(err)
 	}
 	return nil
 }
@@ -106,21 +107,22 @@ func (c *Composer) Config(ctx context.Context) ([]byte, error) {
 func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOptions) (*Composer, error) {
 	options := &types.ComposerOptions{}
 	if name == "" {
-		return nil, fmt.Errorf("NewComposerError: name cannot be empty")
+		return nil, errordefs.NewComposerError(errors.New("name must not be '' "))
 	}
 	options.Name = name
 	for _, set := range setComposerOptions {
 		if err := set(options); err != nil {
-			return nil, fmt.Errorf("NewComposerError: %s", err)
+			return nil, errordefs.NewComposerError(err)
 		}
 	}
 
 	if options.Client == nil {
-		return nil, errors.New("NewComposerError: no client provided")
+		return nil, errordefs.NewComposerError(errors.New("no client provided"))
+
 	} else if options.Environment == nil {
-		return nil, errors.New("NewComposerError: no environment provided")
+		return nil, errordefs.NewComposerError(errors.New("no environment provided"))
 	} else if options.Yaml == nil {
-		return nil, errors.New("NewComposerError: no yaml provided")
+		return nil, errordefs.NewComposerError(errors.New("no yaml provided"))
 	} else {
 		ctx := context.Background()
 		configFile := ctypes.ConfigFile{
@@ -134,7 +136,7 @@ func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOption
 			o.SetProjectName(options.Name, true)
 		})
 		if err != nil {
-			return nil, fmt.Errorf("NewComposerError: %s", err)
+			return nil, errordefs.NewComposerError(err)
 		}
 		project.ApplyProfiles(options.Profiles)
 		//Sets the proper docker compose labels this is how docker desktop
@@ -155,11 +157,11 @@ func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOption
 			command.WithCombinedStreams(os.Stdout),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("NewComposerError: %s", err)
+			return nil, errordefs.NewComposerError(err)
 		}
 		err = cli.Initialize(flags.NewClientOptions())
 		if err != nil {
-			return nil, fmt.Errorf("NewComposerError: %s", err)
+			return nil, errordefs.NewComposerError(err)
 		}
 		service := compose.NewComposeService(cli)
 		return &Composer{
@@ -170,6 +172,9 @@ func NewComposer(name string, setComposerOptions ...composeopt.SetComposerOption
 		}, nil
 	}
 }
+
+// Helper func checks to see if the services provided actually exist within the project
+// such as being defined in a docker-compose.yaml
 func (c *Composer) checkServices(services []string) error {
 	definedServices := c.AllServicesNames()
 	notDefined := []string{}
@@ -179,7 +184,7 @@ func (c *Composer) checkServices(services []string) error {
 		}
 	}
 	if len(notDefined) > 0 {
-		return fmt.Errorf("ComposerStopError: %v are not defined services", notDefined)
+		return errordefs.NewComposerError(fmt.Errorf("%v are not defined services", notDefined))
 	}
 	return nil
 }
