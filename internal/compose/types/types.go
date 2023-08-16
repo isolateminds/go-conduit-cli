@@ -12,7 +12,9 @@ import (
 
 // This is an in memory environment object for use with compose files.
 type Environment struct {
-	// Key / Value pairs
+	//Bytes of env file to preserve comments, whitespace and order etc.
+	Bytes []byte
+	// Key/Value pairs
 	Variables map[string]string
 }
 
@@ -28,20 +30,30 @@ func NewEnvironment(kvPairs map[string]string) *Environment {
 }
 
 // This function is designed for loading environment variables from a specific file source.
-func LoadEnvFromFile(src string) (*Environment, error) {
+func NewEnvFromFile(src string) (*Environment, error) {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return nil, err
+	}
 	kvPairs, err := godotenv.Read(src)
 	if err != nil {
 		return nil, err
 	}
 	return &Environment{
+		Bytes:     b,
 		Variables: kvPairs,
 	}, nil
 }
 
 // This function is useful when you need to load environment variables
 // from an external source, such as from a GET request response body.
-func LoadEnvFromURL(url string) (env *Environment, err error) {
+func NewEnvFromURL(url string) (env *Environment, err error) {
 	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +62,7 @@ func LoadEnvFromURL(url string) (env *Environment, err error) {
 		return
 	}
 	return &Environment{
+		Bytes:     b,
 		Variables: kvPairs,
 	}, nil
 }
