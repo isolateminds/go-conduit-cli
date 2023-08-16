@@ -4,9 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,7 +12,6 @@ import (
 	"syscall"
 
 	"github.com/isolateminds/go-conduit-cli/pkg/conduit"
-	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"k8s.io/utils/strings/slices"
 )
@@ -31,185 +28,196 @@ var (
 	services    []string
 	projectName string
 	detach      bool
-	deploy      = &cobra.Command{
-		Use:   "deploy",
-		Short: "Manage a local Conduit deployment",
-		Long:  "Manage a local Conduit deployment",
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmd.Help(); err != nil {
-				log.Fatal(err)
-			}
-		},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if len(services) > 0 {
-				services = slices.Filter(nil, services, func(s string) bool {
-					return strings.TrimSpace(s) != ""
-				})
-			}
-		},
-	}
 
+	deploy = &cobra.Command{
+		Use:              "deploy",
+		Short:            "Manage a local Conduit deployment",
+		Run:              runDeploy,
+		PersistentPreRun: runPreRun,
+	}
 	rm = &cobra.Command{
 		Use:   "rm",
 		Short: "Remove your local Conduit deployment",
-		Long:  "Remove your local Conduit deployment",
-		Run: func(cmd *cobra.Command, args []string) {
-			if !IsInProjectDirectory() {
-				if err := ChangeToProjectRootDir(); err != nil {
-					FatalError("RemoveError", err)
-				}
-			}
-			ctx := context.Background()
-			con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
-			if err != nil {
-				FatalError("RemoveError", err)
-			}
-			err = con.Composer.Remove(ctx, services)
-			if err != nil {
-				FatalError("RemoveError", err)
-			}
-		},
+		Run:   runStop,
 	}
 	stop = &cobra.Command{
 		Use:   "stop",
 		Short: "Bring down your local Conduit deployment",
-		Long:  "Bring down your local Conduit deployment",
-		Run: func(cmd *cobra.Command, args []string) {
-			if !IsInProjectDirectory() {
-				if err := ChangeToProjectRootDir(); err != nil {
-					FatalError("StartError", err)
-				}
-			}
-			ctx := context.Background()
-			con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
-			if err != nil {
-				FatalError("StartError", err)
-			}
-			err = con.Stop(ctx, services)
-			if err != nil {
-				FatalError("StartError", err)
-			}
-		},
+		Run:   runStop,
 	}
 	start = &cobra.Command{
 		Use:   "start",
 		Short: "Bring up your local Conduit deployment",
-		Long:  "Bring up your local Conduit deployment",
-		Run: func(cmd *cobra.Command, args []string) {
-			if !IsInProjectDirectory() {
-				if err := ChangeToProjectRootDir(); err != nil {
-					FatalError("StartError", err)
-				}
-			}
-			ctx := context.Background()
-			con, err := conduit.NewConduitFromProject(ctx, detach, profiles)
-			if err != nil {
-				FatalError("StartError", err)
-			}
-			err = con.Json.WriteFile()
-			if err != nil {
-				FatalError("StartError", err)
-			}
-			err = con.Up(ctx)
-			if err != nil {
-				FatalError("StartError", err)
-			}
-			if detach {
-				Success("Started")
-				os.Exit(0)
-			}
-
-		},
+		Run:   runStart,
 	}
 	setup = &cobra.Command{
 		Use:   "setup",
 		Short: "Bootstrap a local Conduit deployment",
-		Long:  "Bootstrap a local Conduit deployment",
-		Run: func(cmd *cobra.Command, args []string) {
-			if IsInProjectDirectory() {
-				FatalError("SetupError", errors.New("already in project directory"))
-			}
-			err := os.Mkdir(projectName, fs.ModePerm)
-			if err != nil {
-				FatalError("SetupError", err)
-			}
-			err = os.Chdir(projectName)
-			if err != nil {
-				FatalError("SetupError", err)
-			}
-			pDir, err := os.Getwd()
-			if err != nil {
-				FatalError("SetupError", err)
-			}
-			//In new directory -- write config files, can can delete upon error
-			deletePDir := func() error {
-				return os.RemoveAll(pDir)
-			}
-			sigCtx, cancelSigKill := context.WithCancel(context.Background())
-			HandleSIGTERM(sigCtx, func() {
-				err := deletePDir()
-				if err != nil {
-					FatalError("SetupError", err)
-				}
-			})
-			err = os.WriteFile("loki.cfg.yml", lokiCfg, fs.ModePerm)
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-			err = os.WriteFile("prometheus.cfg.yml", prometheusCfg, fs.ModePerm)
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-
-			ctx := context.Background()
-			con, err := conduit.NewConduitBootstrapper(ctx, projectName, detach, profiles)
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-			//Write .env file
-			err = godotenv.Write(con.Composer.Options.Environment.Variables, ".env")
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-			//Write compose file
-			err = os.WriteFile("docker-compose.yaml", con.Composer.Options.Yaml.Bytes, fs.ModePerm)
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-			err = con.Json.WriteFile()
-			if err != nil {
-				FatalError("SetupError", err, deletePDir)
-			}
-			cancelSigKill()
-
-			if err := con.Up(ctx); err != nil {
-				FatalError("SetupError", err)
-			}
-			if detach {
-				Success("project created")
-			}
-			os.Exit(0)
-		},
+		Run:   runSetup,
 	}
 )
 
 func init() {
 	root.AddCommand(deploy)
 	deploy.AddCommand(setup)
-	deploy.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
-	deploy.PersistentFlags().StringVar(&projectName, "project-name", "conduit", "set the project name (defaults to conduit)")
-	deploy.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
 	deploy.AddCommand(start)
+	deploy.AddCommand(stop)
+	deploy.AddCommand(rm)
+
+	//Flags
+	//Deploy setup --profiles x,y,z --project-name my-proj --detach
+	setup.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
+	setup.PersistentFlags().StringVar(&projectName, "project-name", "conduit", "set the project name (defaults to conduit)")
+	setup.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
+
+	//deploy start --profiles x,y,z --detach
 	start.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
 	start.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
-	deploy.AddCommand(stop)
+	//deploy stop --services my-db,my-frontend
 	stop.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to stop")
-	deploy.AddCommand(rm)
+
+	//Deploy rm --services my-db,my-frontend
 	rm.PersistentFlags().StringSliceVar(&services, "services", []string{}, "services to remove")
+}
+func runDeploy(cmd *cobra.Command, args []string) {
+	if err := cmd.Help(); err != nil {
+		PrintFatalError(err)
+	}
+}
+
+// Sanitizes the stringslicevar flags incase there is a space eg: --services x,y, <-- trailing comma
+func runPreRun(cmd *cobra.Command, args []string) {
+	if len(services) > 0 {
+		services = slices.Filter(nil, services, func(s string) bool {
+			return strings.TrimSpace(s) != ""
+		})
+	}
+	if len(profiles) > 0 {
+		profiles = slices.Filter(nil, profiles, func(s string) bool {
+			return strings.TrimSpace(s) != ""
+		})
+	}
+}
+func runRm(cmd *cobra.Command, args []string) {
+	if !IsInProjectDirectory() {
+		if err := ChangeToProjectRootDir(); err != nil {
+			PrintFatalError(NewRemoveError(err))
+		}
+	}
+	ctx := context.Background()
+	con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
+	if err != nil {
+		PrintFatalError(NewRemoveError(err))
+	}
+	err = con.Remove(ctx, services)
+	if err != nil {
+		PrintFatalError(NewRemoveError(err))
+	}
+}
+func runStop(cmd *cobra.Command, args []string) {
+	if !IsInProjectDirectory() {
+		if err := ChangeToProjectRootDir(); err != nil {
+			PrintFatalError(NewStopError(err))
+		}
+	}
+	ctx := context.Background()
+	con, err := conduit.NewConduitFromProject(ctx, detach, []string{})
+	if err != nil {
+		PrintFatalError(NewStopError(err))
+	}
+	err = con.Stop(ctx, services)
+	if err != nil {
+		PrintFatalError(NewStopError(err))
+	}
+}
+func runStart(cmd *cobra.Command, args []string) {
+	if !IsInProjectDirectory() {
+		if err := ChangeToProjectRootDir(); err != nil {
+			PrintFatalError(NewStartError(err))
+		}
+	}
+	ctx := context.Background()
+	con, err := conduit.NewConduitFromProject(ctx, detach, profiles)
+	if err != nil {
+		PrintFatalError(NewStartError(err))
+	}
+	err = con.WriteConduitJsonFile()
+	if err != nil {
+		PrintFatalError(NewStartError(err))
+	}
+	err = con.Up(ctx)
+	if err != nil {
+		PrintFatalError(NewStartError(err))
+	}
+	if detach {
+		PrintSuccess("Started")
+		os.Exit(0)
+	}
+
+}
+func runSetup(cmd *cobra.Command, args []string) {
+	if IsInProjectDirectory() {
+		PrintFatalError(NewSetupError(errors.New("already in project directory")))
+	}
+	if err := os.Mkdir(projectName, fs.ModePerm); err != nil {
+		PrintFatalError(NewSetupError(err))
+	}
+	if err := os.Chdir(projectName); err != nil {
+		PrintFatalError(NewSetupError(err))
+	}
+	pDir, err := os.Getwd()
+	if err != nil {
+		PrintFatalError(NewSetupError(err))
+	}
+
+	//In new directory -- write config files, can can delete upon error
+	deletePDir := func() { os.RemoveAll(pDir) }
+	//Delete project dir uopn error unless canceled
+	sigCtx, cancelSigKill := context.WithCancel(context.Background())
+	handleSIGTERM(sigCtx, deletePDir)
+
+	if err := os.WriteFile("loki.cfg.yml", lokiCfg, fs.ModePerm); err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+	}
+	if err := os.WriteFile("prometheus.cfg.yml", prometheusCfg, fs.ModePerm); err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+	}
+
+	ctx := context.Background()
+	con, err := conduit.NewConduitBootstrapper(ctx, projectName, detach, profiles)
+	if err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+
+	}
+	if err := con.WriteComposeFile(); err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+	}
+	if err := con.WriteEnvFile(); err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+	}
+	if err := con.WriteConduitJsonFile(); err != nil {
+		deletePDir()
+		PrintFatalError(NewSetupError(err))
+	}
+
+	cancelSigKill()
+	if err := con.Up(ctx); err != nil {
+		PrintFatalError(NewSetupError(err))
+	}
+	//If detached print success message cause otherwise the client will be consuming docker compose logs
+	if detach {
+		PrintSuccess("project created")
+	}
+	os.Exit(0)
 }
 
 // Invokes a callback after signal termination CTRL+C
-func HandleSIGTERM(ctx context.Context, cb func()) {
+func handleSIGTERM(ctx context.Context, cb func()) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
@@ -217,8 +225,10 @@ func HandleSIGTERM(ctx context.Context, cb func()) {
 		select {
 		case <-c:
 			cb()
+			return
 		case <-ctx.Done():
 			// Do nothing if the context is canceled before receiving the signal
+			return
 		}
 	}()
 }
@@ -229,7 +239,7 @@ func ChangeToProjectRootDir() error {
 	// Start from the current working directory
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("changeToProjectRootDirError: %s", err)
+		return err
 	}
 
 	for {
@@ -248,7 +258,7 @@ func ChangeToProjectRootDir() error {
 		currentDir = parentDir
 	}
 
-	return errors.New("changeToProjectRootDirError: you are not in a project directory")
+	return errors.New("you are not in a project directory")
 }
 
 // Checks to see if you are in root project dir
