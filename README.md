@@ -46,7 +46,7 @@ Bootstrap a local Conduit deployment
 
 ```
 USAGE
-  $ conduit deploy setup --profiles <value>,<value> [--project-name <value>] [--ui-image-tag <value>]
+  $ goconduit deploy setup --profiles <value>,<value> [--project-name <value>] [--ui-image-tag <value>]
   [--image-tag <value>] [--detach] [--mount-database]
 
 FLAGS
@@ -65,13 +65,13 @@ FLAGS
 
 ```
 
-## `conduit deploy start`
+## `goconduit deploy start`
 
 Bring up your local Conduit deployment
 
 ```
 USAGE
-  $ conduit deploy start [--profiles <value>,<value>] [--detach]
+  $ goconduit deploy start [--profiles <value>,<value>] [--detach]
 
 DESCRIPTION
   Bring up your local Conduit deployment
@@ -83,24 +83,24 @@ FLAGS
 
 ```
 
-## `conduit deploy stop`
+## `goconduit deploy stop`
 
 Bring down your local Conduit deployment
 
 ```
 USAGE
-  $ conduit deploy stop [--services <value>,<value>]
+  $ goconduit deploy stop [--services <value>,<value>]
 FLAGS
   --services    services to stop
 ```
 
-## `conduit deploy rm`
+## `goconduit deploy rm`
 
 Remove your local Conduit deployment
 
 ```
 USAGE
-  $ conduit deploy rm [--services <value>,<value>]
+  $ goconduit deploy rm [--services <value>,<value>]
 FLAGS
   --services    services to remove
 ```
