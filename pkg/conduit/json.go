@@ -19,7 +19,7 @@ type ConduitJson struct {
 
 // Writes the conduit.json file to current path
 func (cj *ConduitJson) WriteFile() error {
-	b, err := json.Marshal(cj)
+	b, err := json.MarshalIndent(cj, "", "	") // The last argument is the indentation prefix
 	if err != nil {
 		return err
 	}
