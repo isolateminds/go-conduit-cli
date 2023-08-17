@@ -76,7 +76,7 @@ DESCRIPTION
   Bring up your local Conduit deployment
 
 FLAGS
-  --profiles    profiles to enable (one database profile is required either mongodb or postgres)
+  --profiles    profiles to enable
 
   --detach      set detach mode to disable console log output (defaults to false)
 
