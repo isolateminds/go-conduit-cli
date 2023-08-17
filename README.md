@@ -1,2 +1,106 @@
+<div align="center">
+    <br>
+    <a href="https://getconduit.dev" target="_blank"><img src="https://getconduit.dev/conduitLogo.svg" height="80px" alt="logo"/></a>
+    <br/>
+    <h3>The only Backend you'll ever need.</h3>
+</div>
+
 # go-conduit-cli
 A Golang port of [ConduitPlatform/CLI](https://github.com/ConduitPlatform/CLI) with some additional features
+
+Conduit's CLI is a multipurpose tool that's meant to facilitate your development experience and speed up your work
+regardless of whether you're deploying a Conduit instance for your project, developing custom modules or even
+contributing to the upstream project in your spare time.
+
+
+# Commands
+<!-- commands -->
+<!-- * [`conduit cli update`](#conduit-cli-update) -->
+* [`conduit deploy setup`](#goconduit-deploy-setup)
+* [`conduit deploy start`](#goconduit-deploy-start)
+* [`conduit deploy stop`](#goconduit-deploy-stop)
+* [`conduit deploy rm`](#goconduit-deploy-rm)
+
+<!-- * [`conduit deploy update`](#conduit-deploy-update) -->
+<!-- * [`conduit generateClient graphql`](#conduit-generateclient-graphql) -->
+<!-- * [`conduit generateClient rest`](#conduit-generateclient-rest) -->
+<!-- * [`conduit generateSchema [PATH]`](#conduit-generateschema-path) -->
+<!-- * [`conduit help [COMMAND]`](#conduit-help-command) -->
+<!-- * [`conduit init`](#conduit-init) -->
+
+<!-- ## `conduit cli update`
+
+Update your CLI
+
+```
+USAGE
+  $ conduit cli update
+
+DESCRIPTION
+  Update your CLI
+``` -->
+
+## `goconduit deploy setup`
+
+Bootstrap a local Conduit deployment
+
+```
+USAGE
+  $ conduit deploy setup --profiles <value>,<value> [--project-name <value>] [--ui-image-tag <value>]
+  [--image-tag <value>] [--detach] [--mount-database]
+
+FLAGS
+  --profiles    profiles to enable (one database profile is required either mongodb or postgres)
+
+  --project-name    set the project name (defaults to conduit)
+
+  --ui-image-tag    set conduit-ui image tag (defaults to latest)
+
+  --image-tag   set all other conduit image tag (defaults to latest)
+
+  --detach  set detach mode to disable console log output (defaults to false)
+
+  --mount-database  enable this to bind mount postgres or mongodb container to project directory (defaults to false). if this is not set it will use persistent volumes
+
+
+```
+
+## `conduit deploy start`
+
+Bring up your local Conduit deployment
+
+```
+USAGE
+  $ conduit deploy start [--profiles <value>,<value>] [--detach]
+
+DESCRIPTION
+  Bring up your local Conduit deployment
+
+FLAGS
+  --profiles    profiles to enable (one database profile is required either mongodb or postgres)
+
+  --detach  set detach mode to disable console log output (defaults to false)
+
+```
+
+## `conduit deploy stop`
+
+Bring down your local Conduit deployment
+
+```
+USAGE
+  $ conduit deploy stop [--services <value>,<value>]
+FLAGS
+  --services    services to stop
+```
+
+## `conduit deploy rm`
+
+Remove your local Conduit deployment
+
+```
+USAGE
+  $ conduit deploy rm [--services <value>,<value>]
+FLAGS
+  --services    services to remove
+```
