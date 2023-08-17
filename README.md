@@ -46,19 +46,18 @@ Bootstrap a local Conduit deployment
 
 ```
 USAGE
-  $ goconduit deploy setup --profiles <value>,<value> [--project-name <value>] [--ui-image-tag <value>]
-  [--image-tag <value>] [--detach] [--mount-database]
+  $ goconduit deploy setup --profiles <value>,<value> [--project-name <value>] [--ui-image-tag <value>] [--image-tag <value>] [--detach] [--mount-database]
 
 FLAGS
-  --profiles    profiles to enable (one database profile is required either mongodb or postgres)
+  --profiles        profiles to enable (one database profile is required either mongodb or postgres)
 
   --project-name    set the project name (defaults to conduit)
 
   --ui-image-tag    set conduit-ui image tag (defaults to latest)
 
-  --image-tag   set all other conduit image tag (defaults to latest)
+  --image-tag       set all other conduit image tag (defaults to latest)
 
-  --detach  set detach mode to disable console log output (defaults to false)
+  --detach          set detach mode to disable console log output (defaults to false)
 
   --mount-database  enable this to bind mount postgres or mongodb container to project directory (defaults to false). if this is not set it will use persistent volumes
 
@@ -79,7 +78,7 @@ DESCRIPTION
 FLAGS
   --profiles    profiles to enable (one database profile is required either mongodb or postgres)
 
-  --detach  set detach mode to disable console log output (defaults to false)
+  --detach      set detach mode to disable console log output (defaults to false)
 
 ```
 
