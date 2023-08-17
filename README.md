@@ -8,7 +8,7 @@
 # go-conduit-cli
 A Golang port of [ConduitPlatform/CLI](https://github.com/ConduitPlatform/CLI) with some additional features
 
-Conduit's CLI is a multipurpose tool that's meant to facilitate your development experience and speed up your work
+GoConduitCli is a multipurpose tool that's meant to facilitate your development experience and speed up your work
 regardless of whether you're deploying a Conduit instance for your project, developing custom modules or even
 contributing to the upstream project in your spare time.
 
