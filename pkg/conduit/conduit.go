@@ -68,12 +68,12 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 
 	composer, err := compose.NewComposer(
 		data.ProjectName,
-		composeopt.Client(client),
-		composeopt.EnvFromFile(".env"),
-		composeopt.YamlFromFile("docker-compose.yaml"),
 		withDetachedFlag(ctx, detached),
+		composeopt.WithClient(client),
+		composeopt.WithEnvFromFile(".env"),
+		composeopt.WithYamlFromFile("docker-compose.yaml"),
 		//the profiles added here will be used with dcoker compose
-		composeopt.Profiles(updatedProfiles...),
+		composeopt.WithProfiles(updatedProfiles...),
 	)
 	if err != nil {
 		return nil, errordefs.NewNewConduitFromProjectError(err)
@@ -92,11 +92,12 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 }
 
 type BootstrapperOptions struct {
-	ProjectName string
-	Profiles    []string
-	Detached    bool
-	ImageTag    string
-	UIImageTag  string
+	ProjectName   string
+	Profiles      []string
+	Detached      bool
+	ImageTag      string
+	UIImageTag    string
+	MountDatabase bool
 }
 
 // For bootsrapping conduit projects and enabling profiles
@@ -106,22 +107,21 @@ func NewConduitBootstrapper(ctx context.Context, options *BootstrapperOptions) (
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
-	db, err := getDatabaseName(options.Profiles)
+	db, err := ensureProperDatabase(options.Profiles)
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
 	composer, err := compose.NewComposer(
 		options.ProjectName,
-		composeopt.Client(client),
-		composeopt.YamlFetchUrl(dockerComposeTemplateURL),
-		composeopt.Profiles(options.Profiles...),
+		composeopt.WithClient(client),
+		withYamlBasedOnDatabaseBind(ctx, db, options),
+		composeopt.WithProfiles(options.Profiles...),
 		withDetachedFlag(ctx, options.Detached),
 		withEnvBasedOnDatabaseProfile(ctx, db, options),
 	)
 	if err != nil {
 		return nil, errordefs.NewConduitBootstrapperError(err)
 	}
-
 	return &Conduit{
 		composer: composer,
 		json: &ConduitJson{
@@ -143,17 +143,25 @@ func (c *Conduit) WriteEnvFile() error {
 	return os.WriteFile(".env", c.composer.Options.Environment.Bytes, fs.ModePerm)
 }
 
-// wWrites the json file to current path
+// Writes the json file to current path
 func (c *Conduit) WriteConduitJsonFile() error {
 	return c.json.WriteFile()
 }
 
-// If detatched no logging will be done same as --detach or -d flag in docker compose
+// modifies the docker compose file if MountDatabase set
+func withYamlBasedOnDatabaseBind(ctx context.Context, db string, options *BootstrapperOptions) composeopt.SetComposerOptions {
+	if options.MountDatabase {
+		return composeopt.WithYamlFromUrlFormatter(dockerComposeTemplateURL, newComposeBindDbFormatter(db))
+	}
+	return composeopt.WithYamlFromUrl(dockerComposeTemplateURL)
+}
+
+// If detatched no logging will be done, same as --detach or -d flag in docker compose
 func withDetachedFlag(ctx context.Context, detached bool) composeopt.SetComposerOptions {
 	if detached {
-		return composeopt.CustomLogConsumer(nil)
+		return composeopt.WithCustomLogConsumer(nil)
 	}
-	return composeopt.DefaultComposeLogConsumer(ctx)
+	return composeopt.WithDefaultComposeLogConsumer(ctx)
 }
 
 /*
@@ -172,12 +180,12 @@ func withEnvBasedOnDatabaseProfile(ctx context.Context, db string, options *Boot
 	switch db {
 	case "mongodb":
 		vMap["MongoPassword"] = dbPass
-		return composeopt.TemplateEnvFetchUrl(mongoEnvTemplateURL, newTemplateFormatter(vMap))
+		return composeopt.WithEnvFromUrlFormatter(mongoEnvTemplateURL, newEnvFormatter(vMap))
 	case "postgres":
 		vMap["PostgresPassword"] = dbPass
-		return composeopt.TemplateEnvFetchUrl(postgresEnvTemplateURL, newTemplateFormatter(vMap))
+		return composeopt.WithEnvFromUrlFormatter(postgresEnvTemplateURL, newEnvFormatter(vMap))
 	default:
-		return composeopt.Error("a database profile has not been given use")
+		return composeopt.WithError("a database profile has not been given use")
 	}
 }
 
@@ -199,8 +207,8 @@ func blockProfiles(profiles []string, blocked ...string) []string {
 	return result
 }
 
-// Gets the database name either mongodb or postgres if it finds to there will be an error
-func getDatabaseName(profiles []string) (string, error) {
+// Gets the database name either mongodb or postgres if it finds two there will be an error
+func ensureProperDatabase(profiles []string) (database string, err error) {
 	var db string
 	var dbs []string
 	for _, profile := range profiles {
