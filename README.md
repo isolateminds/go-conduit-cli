@@ -16,10 +16,10 @@ contributing to the upstream project in your spare time.
 # Commands
 <!-- commands -->
 <!-- * [`conduit cli update`](#conduit-cli-update) -->
-* [`conduit deploy setup`](#goconduit-deploy-setup)
-* [`conduit deploy start`](#goconduit-deploy-start)
-* [`conduit deploy stop`](#goconduit-deploy-stop)
-* [`conduit deploy rm`](#goconduit-deploy-rm)
+* [`goconduit deploy setup`](#goconduit-deploy-setup)
+* [`goconduit deploy start`](#goconduit-deploy-start)
+* [`goconduit deploy stop`](#goconduit-deploy-stop)
+* [`goconduit deploy rm`](#goconduit-deploy-rm)
 
 <!-- * [`conduit deploy update`](#conduit-deploy-update) -->
 <!-- * [`conduit generateClient graphql`](#conduit-generateclient-graphql) -->
