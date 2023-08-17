@@ -34,6 +34,21 @@ func (c *Composer) AllServicesNames() []string {
 	return result
 }
 
+func (c *Composer) Create(ctx context.Context, services []string) error {
+	return c.service.Create(ctx, c.project, api.CreateOptions{
+		Recreate: "force-recreate",
+		Services: services,
+	})
+}
+
+func (c *Composer) Start(ctx context.Context, services []string) error {
+	return c.service.Start(ctx, c.project.Name, api.StartOptions{
+		Project:  c.project,
+		Attach:   c.logConsumer,
+		Services: services,
+	})
+}
+
 // Filters the underlying yaml profiles with the provided ones
 // and returns the ones that only exist within the yaml - docker-compose.yaml
 func (c *Composer) FilterYamlProfiles(profiles []string) []string {

@@ -39,23 +39,29 @@ func (c *Conduit) Stop(ctx context.Context, services []string) error {
 func (c *Conduit) Up(ctx context.Context) error {
 	return c.composer.Up(ctx)
 }
+func (c *Conduit) Start(ctx context.Context, services []string) error {
+	return c.composer.Start(ctx, services)
+}
+func (c *Conduit) Create(ctx context.Context, services []string) error {
+	return c.composer.Create(ctx, services)
+}
 
 // For already bootstrapped projects must be in project root dir when you call this
 func NewConduitFromProject(ctx context.Context, detached bool, profiles []string) (*Conduit, error) {
 	//Automatically checks if connected to daemon
 	client, err := docker.NewClient(ctx)
 	if err != nil {
-		return nil, errordefs.NewNewConduitFromProjectError(err)
+		return nil, errordefs.NewConduitFromProjectError(err)
 	}
 	//Load persisted data
 	data := &ConduitJson{}
 	b, err := ioutil.ReadFile("conduit.json")
 	if err != nil {
-		return nil, errordefs.NewNewConduitFromProjectError(err)
+		return nil, errordefs.NewConduitFromProjectError(err)
 	}
 	err = json.Unmarshal(b, data)
 	if err != nil {
-		return nil, errordefs.NewNewConduitFromProjectError(err)
+		return nil, errordefs.NewConduitFromProjectError(err)
 	}
 
 	//block databases from being added because they where added already during bootstrapping
@@ -76,7 +82,7 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 		composeopt.WithProfiles(updatedProfiles...),
 	)
 	if err != nil {
-		return nil, errordefs.NewNewConduitFromProjectError(err)
+		return nil, errordefs.NewConduitFromProjectError(err)
 	}
 
 	return &Conduit{

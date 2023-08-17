@@ -36,6 +36,14 @@ func (e setupError) Error() string {
 	return fmt.Sprintf("SetupError: %s", e.message)
 }
 
+type recreateError struct {
+	message string
+}
+
+func (e recreateError) Error() string {
+	return fmt.Sprintf("RecreateError: %s", e.message)
+}
+
 func NewSetupError(err error) error {
 	return &setupError{message: err.Error()}
 }
@@ -50,4 +58,7 @@ func NewStartError(err error) error {
 
 func NewStopError(err error) error {
 	return &stopError{message: err.Error()}
+}
+func NewRecreateError(err error) error {
+	return &recreateError{message: err.Error()}
 }

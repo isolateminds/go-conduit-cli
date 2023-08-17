@@ -42,7 +42,7 @@ func NewConduitBootstrapperError(err error) error {
 }
 
 // Errors that occur while in conduit project directory
-func NewNewConduitFromProjectError(err error) error {
+func NewConduitFromProjectError(err error) error {
 	return &newConduitFromProjectError{message: err.Error()}
 }
 

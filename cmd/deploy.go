@@ -58,6 +58,11 @@ var (
 		Short: "Bootstrap a local Conduit deployment",
 		Run:   runSetup,
 	}
+	recreate = &cobra.Command{
+		Use:   "recreate",
+		Short: "recreate project containers",
+		Run:   runRecreate,
+	}
 )
 
 func init() {
@@ -65,8 +70,8 @@ func init() {
 	deploy.AddCommand(setup)
 	deploy.AddCommand(start)
 	deploy.AddCommand(stop)
+	deploy.AddCommand(recreate)
 	deploy.AddCommand(rm)
-
 	//Flags
 	//Deploy setup
 	setup.PersistentFlags().StringSliceVar(&profiles, "profiles", []string{}, "profiles to enable")
@@ -151,8 +156,12 @@ func runStart(cmd *cobra.Command, args []string) {
 	if err != nil {
 		PrintFatalError(NewStartError(err))
 	}
-	err = con.Up(ctx)
+	err = con.Start(ctx, services)
 	if err != nil {
+		if strings.Contains(err.Error(), "has no container to start") {
+			msg := "a service you tried to start has no container.\nTry: goconduit deploy recreate"
+			PrintFatalError(NewStartError(errors.New(msg)))
+		}
 		PrintFatalError(NewStartError(err))
 	}
 	if detach {
@@ -228,6 +237,27 @@ func runSetup(cmd *cobra.Command, args []string) {
 		PrintSuccess("project created")
 	}
 	os.Exit(0)
+}
+func runRecreate(cmd *cobra.Command, args []string) {
+	if !IsInProjectDirectory() {
+		if err := ChangeToProjectRootDir(); err != nil {
+			PrintFatalError(NewStopError(err))
+		}
+	}
+	ctx := context.Background()
+
+	con, err := conduit.NewConduitFromProject(ctx, detach, profiles)
+	if err != nil {
+		PrintFatalError(NewRecreateError(err))
+	}
+	err = con.Create(ctx, services)
+	if err != nil {
+		PrintFatalError(NewRecreateError(err))
+	}
+	if detach {
+		PrintSuccess("recreated")
+		os.Exit(0)
+	}
 }
 
 // Invokes a callback after signal termination CTRL+C

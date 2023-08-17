@@ -20,6 +20,7 @@ contributing to the upstream project in your spare time.
 * [`goconduit deploy start`](#goconduit-deploy-start)
 * [`goconduit deploy stop`](#goconduit-deploy-stop)
 * [`goconduit deploy rm`](#goconduit-deploy-rm)
+* [`goconduit deploy recreate`](#goconduit-deploy-recreate)
 
 <!-- * [`conduit deploy update`](#conduit-deploy-update) -->
 <!-- * [`conduit generateClient graphql`](#conduit-generateclient-graphql) -->
@@ -102,4 +103,13 @@ USAGE
   $ goconduit deploy rm [--services <value>,<value>]
 FLAGS
   --services    services to remove
+```
+
+## `goconduit deploy recreate`
+
+recreate your local Conduit deployment containers
+
+```
+USAGE
+  $ goconduit deploy recreate
 ```
