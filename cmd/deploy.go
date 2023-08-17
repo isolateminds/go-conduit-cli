@@ -24,12 +24,13 @@ var (
 )
 
 var (
-	profiles    []string
-	services    []string
-	projectName string
-	imageTag    string
-	uiImageTag  string
-	detach      bool
+	profiles      []string
+	services      []string
+	projectName   string
+	imageTag      string
+	uiImageTag    string
+	mountDatabase bool
+	detach        bool
 
 	deploy = &cobra.Command{
 		Use:              "deploy",
@@ -40,7 +41,7 @@ var (
 	rm = &cobra.Command{
 		Use:   "rm",
 		Short: "Remove your local Conduit deployment",
-		Run:   runStop,
+		Run:   runRm,
 	}
 	stop = &cobra.Command{
 		Use:   "stop",
@@ -73,6 +74,7 @@ func init() {
 	setup.PersistentFlags().StringVar(&imageTag, "image-tag", "latest", "set the conduit ui image tag to use")
 	setup.PersistentFlags().StringVar(&uiImageTag, "ui-image-tag", "latest", "set the conduit ui image tag to use")
 	setup.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
+	setup.PersistentFlags().BoolVar(&mountDatabase, "mount-database", false, "bind mount the database to the project directory")
 
 	//deploy start
 	start.PersistentFlags().BoolVar(&detach, "detach", false, "run containers in the background")
@@ -189,11 +191,12 @@ func runSetup(cmd *cobra.Command, args []string) {
 		PrintFatalError(NewSetupError(err))
 	}
 	options := &conduit.BootstrapperOptions{
-		ProjectName: projectName,
-		Detached:    detach,
-		Profiles:    profiles,
-		ImageTag:    imageTag,
-		UIImageTag:  uiImageTag,
+		ProjectName:   projectName,
+		Detached:      detach,
+		Profiles:      profiles,
+		ImageTag:      imageTag,
+		UIImageTag:    uiImageTag,
+		MountDatabase: mountDatabase,
 	}
 	ctx := context.Background()
 	con, err := conduit.NewConduitBootstrapper(ctx, options)
