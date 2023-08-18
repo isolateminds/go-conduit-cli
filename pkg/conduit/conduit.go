@@ -67,7 +67,7 @@ func NewConduitFromProject(ctx context.Context, detached bool, profiles []string
 	//block databases from being added because they where added already during bootstrapping
 	//block the profiles specified inside conduit.json
 	blockList := append(data.Profiles, "postgres", "mongodb")
-	//new profiles are ones who haven't been added before and any databases
+	//new profiles are ones who haven't been added before
 	newProfiles := blockProfiles(profiles, blockList...)
 	//the updated profiles are a mix of new and saved profiles (conduit.json)
 	updatedProfiles := append(data.Profiles, newProfiles...)
