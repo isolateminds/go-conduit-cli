@@ -156,10 +156,10 @@ func WithYamlFromUrl(url string) SetComposerOptions {
 Provide a custom log consumer that implements:
 
 		type LogConsumer interface {
-	    	Log(containerName, message string)
-	    	Err(containerName, message string)
-	    	Status(container, msg string)
-	    	Register(container string)
+	    		Log(containerName, message string)
+	    		Err(containerName, message string)
+	    		Status(container, msg string)
+	    		Register(container string)
 		}
 */
 func WithCustomLogConsumer(consumer api.LogConsumer) SetComposerOptions {
