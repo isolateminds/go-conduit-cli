@@ -1,6 +1,8 @@
 module github.com/isolateminds/go-conduit-cli
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/compose-spec/compose-go v1.18.1
