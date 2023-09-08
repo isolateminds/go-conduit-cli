@@ -93,6 +93,9 @@ func WithYamlFromUrlFormatter(url string, parser YamlFormatter) SetComposerOptio
 		}
 		defer res.Body.Close()
 		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return errordefs.NewYamlFileError(err)
+		}
 		b, err := parser.Format(data)
 		if err != nil {
 			return errordefs.NewYamlFileError(err)
